@@ -1,8 +1,9 @@
 package main
 
 import (
-	"Backend/src/Admin/Infrastructure"
+	infrastructure "Backend/src/Admin/Infrastructure"
 	"Backend/src/Admin/Infrastructure/adapters"
+	"Backend/src/core"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -26,6 +27,8 @@ func main() {
 	db := adapters.NewMySQL()
 
 	infrastructure.InitUser(db, router)
+
+	go core.StartConsumer()
 
 	router.Run(":8080")
 }
