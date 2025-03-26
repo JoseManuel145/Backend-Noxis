@@ -34,70 +34,75 @@ func StartConsumer() {
 	}
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare(
-		"Sensores",
-		"topic",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("Error al declarar el exchange: %v", err)
+	// Definir argumentos para las colas
+	args := amqp.Table{
+		"x-max-length":  100,         // Máximo de 100 mensajes en la cola
+		"x-message-ttl": 600000,      // Mensajes expiran después de 10 minutos
+		"x-overflow":    "drop-head", // Si la cola está llena, se eliminan los mensajes más antiguos
+		"x-queue-type":  "classic",   // Tipo de cola clásica
 	}
-
+	// Mapeo de colas a sus respectivas routing keys
 	sensorBindings := map[string]string{
-		"sensores/mq135/#":    "Calidad Aire MQ-135",
-		"sensores/cjmcu811/#": "Carbono CJMCU-811",
-		"sensores/mq7/#":      "Carbono MQ-7",
-		"sensores/ky026/#":    "Flama KY-026",
-		"sensores/mq5/#":      "Gas Natural MQ-5",
-		"sensores/mq136/#":    "Hidrógeno MQ-136",
-		"sensores/mq4/#":      "Metano MQ-4",
-		"sensores/bme680/#":   "Presión-Temperatura-Humedad BME-680",
+		"Calidad Aire MQ-135":                 "sensores.mq135.#",
+		"Carbono CJMCU-811":                   "sensores.cjmcu811.#",
+		"Carbono MQ-7":                        "sensores.mq7.#",
+		"Flama KY-026":                        "sensores.flama.#",
+		"Gas Natural MQ-5":                    "sensores.mq5.#",
+		"Hidrogeno MQ-136":                    "sensores.mq136.#",
+		"Metano MQ-4":                         "sensores.mq4.#",
+		"Presion-Temperatura-Humedad BME-680": "sensores.bme680.#",
 	}
 
-	q, err := ch.QueueDeclare(
-		"",
-		false,
-		false,
-		true,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("Error al declarar la cola: %v", err)
+	// Canal de goroutines para mantener consumidores corriendo
+	done := make(chan bool)
+
+	for queueName, routingKey := range sensorBindings {
+		go func(queueName, routingKey string) {
+			// Declarar la cola
+			q, err := ch.QueueDeclare(
+				queueName, // Nombre exacto de la cola
+				true,      // Durable
+				false,     // No auto-delete
+				false,     // No exclusiva
+				false,     // No-wait
+				args,      // Argumentos de la cola
+			)
+			if err != nil {
+				log.Fatalf("Error al declarar la cola %s: %v", queueName, err)
+			}
+
+			// Enlazar la cola con el exchange amq.topic
+			err = ch.QueueBind(
+				q.Name,
+				routingKey,
+				"amq.topic", // Exchange predefinido en RabbitMQ
+				false,
+				nil,
+			)
+			if err != nil {
+				log.Fatalf("Error al enlazar la cola %s con el exchange amq.topic: %v", queueName, err)
+			}
+
+			// Consumir mensajes de la cola
+			msgs, err := ch.Consume(
+				q.Name,
+				"",
+				true,
+				false,
+				false,
+				false,
+				nil,
+			)
+			if err != nil {
+				log.Fatalf("No se pudo consumir mensajes en la cola %s: %v", queueName, err)
+			}
+
+			fmt.Printf("Consumidor iniciado para la cola '%s', esperando mensajes...\n", queueName)
+			for msg := range msgs {
+				fmt.Printf("[Mensaje Recibido] Cola: %s | Routing Key: %s | Datos: %s\n", queueName, msg.RoutingKey, msg.Body)
+			}
+		}(queueName, routingKey)
 	}
 
-	for routingKey, sensorName := range sensorBindings {
-		err = ch.QueueBind(
-			q.Name,
-			routingKey,
-			"Sensores",
-			false,
-			nil,
-		)
-		if err != nil {
-			log.Fatalf("Error al enlazar la cola %s con el exchange Sensores: %v", sensorName, err)
-		}
-	}
-
-	msgs, err := ch.Consume(
-		q.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("No se pudo consumir mensajes: %v", err)
-	}
-
-	fmt.Println("Consumidor iniciado y escuchando mensajes en el exchange 'Sensores'...")
-	for msg := range msgs {
-		fmt.Printf("[Mensaje Recibido] Routing Key: %s | Datos: %s\n", msg.RoutingKey, msg.Body)
-	}
+	<-done // Mantener el programa en ejecución
 }
