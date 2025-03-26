@@ -1,8 +1,8 @@
-package infrastructure
+package Infrastructure
 
 import (
-	application "Backend/src/Alerts/app"
-	"Backend/src/Alerts/infrastructure/adapters"
+	"Backend/src/Alerts/Infrastructure/adapters"
+	"Backend/src/Alerts/application"
 	"Backend/src/core"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +24,7 @@ func NewDependencies(router *gin.Engine, rabbitConn *core.ConnRabbitMQ) error {
 	//RegisterRoutes(router, processReportUseCase)
 
 	// Iniciar la escucha de reportes pendientes en un goroutine
-	go rabbitService.FetchReports()
+	rabbitService.FetchReports()
 
 	return nil
 }

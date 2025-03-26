@@ -8,7 +8,7 @@ import (
 
 	infraestructureAdmin "Backend/src/Admin/Infrastructure"
 	"Backend/src/Admin/Infrastructure/adapters"
-	infraestructureSensor "Backend/src/Alerts/infrastructure"
+	infraestructureSensor "Backend/src/Alerts/Infrastructure"
 	"Backend/src/core"
 
 	"github.com/gin-contrib/cors"
@@ -56,11 +56,6 @@ func main() {
 			panic("Error iniciando el servidor: " + err.Error())
 		}
 	}()
-
-	go func() {
-		core.StartConsumer()
-	}()
-
 	<-sigChan
 	println("\nApagando el servidor y cerrando conexiones...")
 }
