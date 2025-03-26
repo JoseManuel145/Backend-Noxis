@@ -1,8 +1,12 @@
 package main
 
 import (
-	"Backend/src/Admin/Infrastructure"
+	infrastructure "Backend/src/Admin/Infrastructure"
 	"Backend/src/Admin/Infrastructure/adapters"
+	"Backend/src/core"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -27,5 +31,19 @@ func main() {
 
 	infrastructure.InitUser(db, router)
 
-	router.Run(":8080")
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		core.StartConsumer()
+	}()
+
+	go func() {
+		if err := router.Run(":8080"); err != nil {
+			panic("Error iniciando el servidor: " + err.Error())
+		}
+	}()
+
+	<-sigChan
+	println("\nApagando el servidor y cerrando conexiones...")
 }
