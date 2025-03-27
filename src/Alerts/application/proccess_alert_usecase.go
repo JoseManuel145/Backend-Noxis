@@ -9,10 +9,11 @@ import (
 
 type ProcessSensor struct {
 	RabbitMQ repositories.IRabbitMQService
+	saveRepo *SaveAlert
 }
 
-func NewProcessSensor(Rabbit repositories.IRabbitMQService) *ProcessSensor {
-	return &ProcessSensor{RabbitMQ: Rabbit}
+func NewProcessSensor(Rabbit repositories.IRabbitMQService, save *SaveAlert) *ProcessSensor {
+	return &ProcessSensor{RabbitMQ: Rabbit, saveRepo: save}
 }
 
 func (ps *ProcessSensor) StartProcessingSensors() {
@@ -25,10 +26,9 @@ func (ps *ProcessSensor) StartProcessingSensors() {
 			continue
 		}
 		for _, alert := range data {
+			//implementar logica para decidir cuando guardar y cuando no
+			ps.saveRepo.repo.SaveAlert(&alert)
 			log.Printf("%s", alert.Data)
 		}
-		//for _, domain.Alert := range sensorData {
-		//	log.Printf("[Sensor] Tipo: %s, Valor: %.2f %s, Tiempo: %s\n")
-		//}
 	}
 }
