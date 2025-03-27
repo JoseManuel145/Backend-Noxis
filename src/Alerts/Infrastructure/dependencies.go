@@ -2,6 +2,7 @@ package Infrastructure
 
 import (
 	"Backend/src/Alerts/Infrastructure/adapters"
+	"Backend/src/Alerts/Infrastructure/handlers"
 	"Backend/src/Alerts/application"
 
 	"github.com/gin-gonic/gin"
@@ -16,11 +17,20 @@ type Dependencies struct {
 func NewDependencies(router *gin.Engine) {
 	// Inicializar servicio RabbitMQ
 	rabbitService := adapters.NewRabbitMQAdapter()
+	db := adapters.NewMongoAlertRepository()
 
-	application.NewProcessSensor(rabbitService)
+	save := application.NewSaveAlert(db)
+
+	getAll := application.NewGetAllAlerts(db)
+	getBySensor := application.NewGetBySensorAlert(db)
+
+	application.NewProcessSensor(rabbitService, save)
+
+	getAllController := handlers.NewGetAllAlerts(getAll)
+	getBySensorController := handlers.NewGetBySensor(getBySensor)
 
 	// Registrar rutas
-	//RegisterRoutes(router, processReportUseCase)
+	SetupRoutes(router, getAllController, getBySensorController)
 
 	// Iniciar la escucha de reportes pendientes en un goroutine
 	rabbitService.FetchReports()
