@@ -7,9 +7,7 @@ import (
 	"time"
 
 	infraestructureAdmin "Backend/src/Admin/Infrastructure"
-	"Backend/src/Admin/Infrastructure/adapters"
 	infraestructureSensor "Backend/src/Alerts/Infrastructure"
-	"Backend/src/core"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -30,22 +28,11 @@ func main() {
 	router := gin.Default()
 	router.Use(cors.New(config))
 
-	// Inicializar base de datos
-	db := adapters.NewMySQL()
-
-	// Inicializar rutas de usuarios
-	infraestructureAdmin.InitUser(db, router)
-
-	// Conexión a RabbitMQ
-	rabbitConn := core.GetRabbitMQ()
-	if rabbitConn.Err != "" {
-		panic("Error al conectar RabbitMQ: " + rabbitConn.Err)
-	}
+	// Inicializar las dependencias del Administrador
+	infraestructureAdmin.InitUser(router)
 
 	// Inicializar dependencias de la aplicación de alertas
-	if err := infraestructureSensor.NewDependencies(router, rabbitConn); err != nil {
-		panic("Error al inicializar dependencias: " + err.Error())
-	}
+	infraestructureSensor.NewDependencies(router)
 
 	// Configuración para recibir señales del sistema
 	sigChan := make(chan os.Signal, 1)
@@ -57,5 +44,4 @@ func main() {
 		}
 	}()
 	<-sigChan
-	println("\nApagando el servidor y cerrando conexiones...")
 }

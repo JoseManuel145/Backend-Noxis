@@ -14,7 +14,8 @@ type Dependencies struct {
 }
 
 // NewDependencies configura las dependencias del sistema
-func NewDependencies(router *gin.Engine, rabbitConn *core.ConnRabbitMQ) error {
+func NewDependencies(router *gin.Engine) {
+	rabbitConn := core.GetRabbitMQ()
 	// Inicializar servicio RabbitMQ
 	rabbitService := adapters.NewRabbitMQAdapter(rabbitConn)
 
@@ -26,5 +27,4 @@ func NewDependencies(router *gin.Engine, rabbitConn *core.ConnRabbitMQ) error {
 	// Iniciar la escucha de reportes pendientes en un goroutine
 	rabbitService.FetchReports()
 
-	return nil
 }

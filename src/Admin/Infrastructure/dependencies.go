@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitUser(db *adapters.MySQL, router *gin.Engine) {
+func InitUser(router *gin.Engine) {
 	println("Usuario Master")
-
+	db := adapters.NewMySQL()
 	// Instanciar casos de uso (Use Cases)
 	logIn := application.NewLogInUseCase(db)
 	register := application.NewRegisterUseCase(db)
