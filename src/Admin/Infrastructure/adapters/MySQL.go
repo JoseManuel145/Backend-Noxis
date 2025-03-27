@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"Backend/src/Admin/domain"
 	"Backend/src/core"
 	"fmt"
 	"log"
@@ -9,6 +10,8 @@ import (
 type MySQL struct {
 	conn *core.Conn_MySQL
 }
+
+var _ domain.IAdmin = (*MySQL)(nil)
 
 func NewMySQL() *MySQL {
 	conn := core.GetDBPool()
