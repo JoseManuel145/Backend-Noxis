@@ -19,7 +19,8 @@ type RabbitMQAdapter struct {
 }
 
 // NewRabbitMQAdapter inicializa RabbitMQAdapter
-func NewRabbitMQAdapter(conn *core.ConnRabbitMQ) repositories.IRabbitMQService {
+func NewRabbitMQAdapter() repositories.IRabbitMQService {
+	conn := core.GetRabbitMQ()
 	if conn.Err != "" {
 		log.Fatalf("Error al configurar RabbitMQ: %v", conn.Err)
 	}

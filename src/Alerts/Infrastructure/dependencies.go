@@ -3,7 +3,6 @@ package Infrastructure
 import (
 	"Backend/src/Alerts/Infrastructure/adapters"
 	"Backend/src/Alerts/application"
-	"Backend/src/core"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,9 +14,8 @@ type Dependencies struct {
 
 // NewDependencies configura las dependencias del sistema
 func NewDependencies(router *gin.Engine) {
-	rabbitConn := core.GetRabbitMQ()
 	// Inicializar servicio RabbitMQ
-	rabbitService := adapters.NewRabbitMQAdapter(rabbitConn)
+	rabbitService := adapters.NewRabbitMQAdapter()
 
 	application.NewProcessSensor(rabbitService)
 
