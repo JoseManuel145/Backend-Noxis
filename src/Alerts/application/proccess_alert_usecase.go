@@ -26,9 +26,16 @@ func (ps *ProcessSensor) StartProcessingSensors() {
 			continue
 		}
 		for _, alert := range data {
-			//implementar logica para decidir cuando guardar y cuando no
-			ps.saveRepo.repo.SaveAlert(&alert)
-			log.Printf("%s", alert.Data)
+			if EsPeligroso(alert.Sensor, alert.Data) {
+				err := ps.saveRepo.repo.SaveAlert(&alert)
+				if err != nil {
+					log.Println("Error guardando alerta:", err)
+				} else {
+					log.Printf("Alerta peligrosa guardada: Sensor %s, Datos: %v", alert.Sensor, alert.Data)
+				}
+			} else {
+				log.Printf("Alerta ignorada: Sensor %s, Datos seguros: %v", alert.Sensor, alert.Data)
+			}
 		}
 	}
 }
