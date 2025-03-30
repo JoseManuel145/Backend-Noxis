@@ -18,13 +18,15 @@ func NewDependencies(router *gin.Engine) {
 	// Inicializar servicio RabbitMQ
 	rabbitService := adapters.NewRabbitMQAdapter()
 	db := adapters.NewMongoAlertRepository()
-
+	websocketService := adapters.NewWebSocketAdapter()
 	save := application.NewSaveAlert(db)
 
 	getAll := application.NewGetAllAlerts(db)
 	getBySensor := application.NewGetBySensorAlert(db)
 
-	application.NewProcessSensor(rabbitService, save)
+	ws := application.NewSendAlertUseCase(websocketService)
+
+	application.NewProcessSensor(rabbitService, save, ws)
 
 	getAllController := handlers.NewGetAllAlerts(getAll)
 	getBySensorController := handlers.NewGetBySensor(getBySensor)

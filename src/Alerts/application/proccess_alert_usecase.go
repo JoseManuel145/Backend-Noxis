@@ -10,9 +10,10 @@ import (
 type ProcessSensor struct {
 	RabbitMQ repositories.IRabbitMQService
 	saveRepo *SaveAlert
+	sendMsg  *SendAlert
 }
 
-func NewProcessSensor(Rabbit repositories.IRabbitMQService, save *SaveAlert) *ProcessSensor {
+func NewProcessSensor(Rabbit repositories.IRabbitMQService, save *SaveAlert, send *SendAlert) *ProcessSensor {
 	return &ProcessSensor{RabbitMQ: Rabbit, saveRepo: save}
 }
 
@@ -29,6 +30,10 @@ func (ps *ProcessSensor) StartProcessingSensors() {
 			err := ps.saveRepo.Execute(&alert)
 			if err != nil {
 				log.Printf("Error procesando alerta: Sensor %s, Datos: %v, Error: %v", alert.Sensor, alert.Data, err)
+			}
+			err = ps.sendMsg.Execute(&alert)
+			if err != nil {
+				log.Printf("Error enviando alerta al websocket: Sensor %s, Datos: %v, Error: %v", alert.Sensor, alert.Data, err)
 			}
 		}
 	}
