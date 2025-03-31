@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"Backend/src/Admin/app"
+	"Backend/src/Admin/application"
 	"Backend/src/Admin/domain"
 	"net/http"
 
@@ -9,10 +9,10 @@ import (
 )
 
 type RegisterController struct {
-	userRegister *app.RegisterUseCase
+	userRegister *application.RegisterUseCase
 }
 
-func NewRegisterController(useCase *app.RegisterUseCase) *RegisterController {
+func NewRegisterController(useCase *application.RegisterUseCase) *RegisterController {
 	return &RegisterController{
 		userRegister: useCase,
 	}

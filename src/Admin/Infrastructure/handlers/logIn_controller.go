@@ -1,17 +1,17 @@
 package handlers
 
 import (
-	"Backend/src/Admin/app"
+	"Backend/src/Admin/application"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type LoginController struct {
-	loginUseCase *app.LogInUseCase
+	loginUseCase *application.LogInUseCase
 }
 
-func NewLoginController(useCase *app.LogInUseCase) *LoginController {
+func NewLoginController(useCase *application.LogInUseCase) *LoginController {
 	return &LoginController{
 		loginUseCase: useCase,
 	}

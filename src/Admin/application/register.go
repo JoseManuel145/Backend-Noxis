@@ -1,8 +1,9 @@
-package app
+package application
 
 import (
 	"Backend/src/Admin/domain"
 	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
