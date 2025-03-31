@@ -4,6 +4,7 @@ import (
 	"Backend/src/Alerts/domain"
 	"Backend/src/Alerts/domain/repositories"
 	"encoding/json"
+	"log"
 )
 
 type SendAlert struct {
@@ -20,5 +21,6 @@ func (uc *SendAlert) Execute(alert *domain.Alert) error {
 		return err
 	}
 	uc.webSocketRepo.SendMessage(jsonMessage)
+	log.Printf("Sensor enviado por WEBSOCKET: Sensor %s, Datos: %v", alert.Sensor, alert.Data)
 	return nil
 }

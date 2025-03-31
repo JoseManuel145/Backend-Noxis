@@ -1,123 +1,147 @@
 package adapters
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-
 	"Backend/src/Alerts/domain"
 	"Backend/src/Alerts/domain/repositories"
 	"Backend/src/core"
+	"encoding/json"
+	"fmt"
+	"log"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// RabbitMQAdapter maneja la conexión y consumo de colas de RabbitMQ
+const batchSize = 5
+
 type RabbitMQAdapter struct {
-	conn    *core.ConnRabbitMQ
-	channel *amqp.Channel
+	conn         *core.ConnRabbitMQ
+	channel      *amqp.Channel
+	sensorQueues map[string]string            // Mapa de colas y sus routing keys
+	consumers    map[string]chan domain.Alert // Mapa de consumidores activos por cola
 }
 
-// NewRabbitMQAdapter inicializa RabbitMQAdapter
+// NewRabbitMQAdapter inicializa RabbitMQAdapter y declara colas una sola vez
 func NewRabbitMQAdapter() repositories.IRabbitMQService {
 	conn := core.GetRabbitMQ()
 	if conn.Err != "" {
 		log.Fatalf("Error al configurar RabbitMQ: %v", conn.Err)
 	}
-	return &RabbitMQAdapter{conn: conn, channel: conn.Channel}
+
+	adapter := &RabbitMQAdapter{
+		conn:    conn,
+		channel: conn.Channel,
+		sensorQueues: map[string]string{
+			"Calidad Aire MQ-135": "sensores.mq135.#",
+			"Carbono CJMCU-811":   "sensores.cjmcu811.#",
+			"Carbono MQ-7":        "sensores.mq7.#",
+			"Flama KY-026":        "sensores.flama.#",
+			"Gas Natural MQ-5":    "sensores.mq5.#",
+			"Hidrogeno MQ-136":    "sensores.mq136.#",
+			"Metano MQ-4":         "sensores.mq4.#",
+			"BME-680":             "sensores.bme680.#",
+		},
+		consumers: make(map[string]chan domain.Alert),
+	}
+
+	adapter.setupQueues()    // Declara las colas solo una vez
+	adapter.startConsumers() // Inicia los consumidores solo una vez
+	return adapter
 }
 
-// FetchReports obtiene los mensajes de RabbitMQ y los convierte en objetos Alert
-func (r *RabbitMQAdapter) FetchReports() ([]domain.Alert, error) {
-	// Definir los argumentos de la cola
+// setupQueues declara las colas solo una vez al inicio
+func (r *RabbitMQAdapter) setupQueues() {
 	args := amqp.Table{
-		"x-max-length":  100,         // Máximo de 100 mensajes
-		"x-message-ttl": 600000,      // Mensajes expiran después de 10 minutos
-		"x-overflow":    "drop-head", // Si está llena, borra los mensajes más viejos
-		"x-queue-type":  "classic",   // Tipo de cola clásica
+		"x-max-length":  100,
+		"x-message-ttl": 600000,
+		"x-overflow":    "drop-head",
+		"x-queue-type":  "classic",
 	}
 
-	// Definir las colas y routing keys
-	sensorBindings := map[string]string{
-		"Calidad Aire MQ-135": "sensores.mq135.#",
-		"Carbono CJMCU-811":   "sensores.cjmcu811.#",
-		"Carbono MQ-7":        "sensores.mq7.#",
-		"Flama KY-026":        "sensores.flama.#",
-		"Gas Natural MQ-5":    "sensores.mq5.#",
-		"Hidrogeno MQ-136":    "sensores.mq136.#",
-		"Metano MQ-4":         "sensores.mq4.#",
-		"BME-680":             "sensores.bme680.#",
-	}
+	for queueName, routingKey := range r.sensorQueues {
+		q, err := r.channel.QueueDeclare(queueName, true, false, false, false, args)
+		if err != nil {
+			log.Fatalf("Error al declarar la cola %s: %v", queueName, err)
+		}
 
-	var alerts []domain.Alert
+		err = r.channel.QueueBind(q.Name, routingKey, "amq.topic", false, nil)
+		if err != nil {
+			log.Fatalf("Error al enlazar la cola %s con el exchange amq.topic: %v", queueName, err)
+		}
 
-	// Iniciar un consumidor por cada cola en goroutines
-	for queueName, routingKey := range sensorBindings {
-		go r.consumeQueue(queueName, routingKey, args, &alerts)
+		fmt.Printf("Cola '%s' configurada correctamente.\n", queueName)
 	}
-	select {} // Mantiene el proceso en ejecución
 }
 
-// consumeQueue configura y consume mensajes de una cola específica
-func (r *RabbitMQAdapter) consumeQueue(queueName, routingKey string, args amqp.Table, alerts *[]domain.Alert) {
-	// Declarar la cola
-	q, err := r.channel.QueueDeclare(
-		queueName,
-		true,
-		false,
-		false,
-		false,
-		args,
-	)
-	if err != nil {
-		log.Fatalf("Error al declarar la cola %s: %v", queueName, err)
-	}
+// startConsumers inicia los consumidores una vez por cada cola, sin volver a declararlas
+func (r *RabbitMQAdapter) startConsumers() {
+	for queueName := range r.sensorQueues {
+		// Crear un canal por cada consumidor
+		dataChan := make(chan domain.Alert, batchSize)
+		r.consumers[queueName] = dataChan
 
-	// Enlazar la cola con el exchange amq.topic
-	err = r.channel.QueueBind(
-		q.Name,
-		routingKey,
-		"amq.topic",
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("Error al enlazar la cola %s con el exchange amq.topic: %v", queueName, err)
+		// Iniciar un goroutine para consumir mensajes en cada cola
+		go r.consumeQueue(queueName, dataChan)
 	}
+}
 
-	// Consumir mensajes
-	msgs, err := r.channel.Consume(
-		q.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+// consumeQueue consume los mensajes de una cola específica sin declararla nuevamente
+func (r *RabbitMQAdapter) consumeQueue(queueName string, dataChan chan domain.Alert) {
+	msgs, err := r.channel.Consume(queueName, "", true, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("No se pudo consumir mensajes en la cola %s: %v", queueName, err)
 	}
 
-	fmt.Printf("Consumidor iniciado para la cola '%s', esperando mensajes...\n", queueName)
 	for msg := range msgs {
-		// Decodificar el mensaje recibido en JSON y asignarlo a Data
 		var data map[string]any
 		if err := json.Unmarshal(msg.Body, &data); err != nil {
 			log.Printf("Error al decodificar el mensaje de la cola %s: %v", queueName, err)
 			continue
 		}
 
-		// Crear una nueva alerta con los datos decodificados
 		alert := domain.Alert{
-			Sensor: queueName, // Asignamos el nombre de la cola al campo Sensor
-			Data:   data,      // Asignamos los datos del mensaje al campo Data
+			Sensor: queueName,
+			Data:   data,
 		}
 
-		// Agregar la alerta al slice de alertas
-		*alerts = append(*alerts, alert)
-
-		// Imprimir los datos para depuración
-		fmt.Printf("[Mensaje Recibido] Cola: %s | Routing Key: %s | Datos: %v\n", queueName, msg.RoutingKey, data)
+		dataChan <- alert
+		log.Printf("Alerta agregada: %v", alert)
 	}
+}
+
+func (r *RabbitMQAdapter) FetchReports() ([]domain.Alert, error) {
+	var alerts []domain.Alert
+	var mu sync.Mutex
+	dataChan := make(chan domain.Alert, batchSize)
+	var wg sync.WaitGroup
+
+	// Iniciar una goroutine por cada cola (ya declarada previamente)
+	for queueName := range r.sensorQueues {
+		wg.Add(1)
+		go func(queue string) {
+			defer wg.Done()
+			r.consumeQueue(queue, dataChan)
+		}(queueName)
+	}
+
+	// Esperar a que todas las goroutines terminen antes de cerrar el canal
+	go func() {
+		wg.Wait()
+		close(dataChan) // Cerrar el canal después de que todas las goroutines terminen
+	}()
+
+	// Acumular datos hasta completar batchSize
+	for alert := range dataChan {
+		mu.Lock()
+		alerts = append(alerts, alert)
+		mu.Unlock()
+
+		if len(alerts) >= batchSize {
+			break
+		}
+	}
+
+	// Si las alertas obtenidas son suficientes, retornar
+	fmt.Printf("Alertas obtenidas: %v\n", alerts)
+	return alerts, nil
 }
