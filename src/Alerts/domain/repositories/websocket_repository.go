@@ -1,5 +1,5 @@
 package repositories
 
 type IWebSocketRepository interface {
-	SendMessage(message []byte)
+	SendMessage(sensor string, message []byte)
 }
