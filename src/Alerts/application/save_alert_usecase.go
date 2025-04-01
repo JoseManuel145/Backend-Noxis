@@ -4,6 +4,7 @@ import (
 	"Backend/src/Alerts/domain"
 	"Backend/src/Alerts/domain/repositories"
 	"fmt"
+	"log"
 )
 
 type SaveAlert struct {
@@ -15,10 +16,17 @@ func NewSaveAlert(repo repositories.IAlertRepository) *SaveAlert {
 }
 
 func (uc *SaveAlert) Execute(alert *domain.Alert) error {
-	// Logica para elegir si guardar o no la alerta
-
-	if alert.Sensor == "" || len(alert.Data) == 0 {
-		return fmt.Errorf("alerta inválida: sensor y datos requeridos")
+	if !EsPeligroso(alert.Sensor, alert.Data) {
+		log.Printf("Alerta ignorada: Sensor %s, Datos seguros: %v", alert.Sensor, alert.Data)
+		return nil
 	}
-	return uc.repo.SaveAlert(alert)
+
+	err := uc.repo.SaveAlert(alert)
+	if err != nil {
+		log.Printf("Error guardando alerta: Sensor %s, Datos: %v, Error: %v", alert.Sensor, alert.Data, err)
+		return fmt.Errorf("no se pudo guardar la alerta: %w", err)
+	}
+
+	log.Printf("Alerta peligrosa guardada: Sensor %s, Datos: %v", alert.Sensor, alert.Data)
+	return nil
 }

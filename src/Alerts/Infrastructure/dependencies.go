@@ -4,6 +4,7 @@ import (
 	"Backend/src/Alerts/Infrastructure/adapters"
 	"Backend/src/Alerts/Infrastructure/handlers"
 	"Backend/src/Alerts/application"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,24 +16,39 @@ type Dependencies struct {
 
 // NewDependencies configura las dependencias del sistema
 func NewDependencies(router *gin.Engine) {
+	println("SENSORES")
+
 	// Inicializar servicio RabbitMQ
 	rabbitService := adapters.NewRabbitMQAdapter()
-	db := adapters.NewMongoAlertRepository()
 
+	// Inicializar repositorios y servicios
+	db := adapters.NewMongoAlertRepository()
+	websocketService := adapters.NewWebSocketAdapter()
 	save := application.NewSaveAlert(db)
 
+	// Inicializar casos de uso
 	getAll := application.NewGetAllAlerts(db)
 	getBySensor := application.NewGetBySensorAlert(db)
+	ws := application.NewSendAlertUseCase(websocketService)
 
-	application.NewProcessSensor(rabbitService, save)
+	// Crear instancia de ProcessSensor
+	processSensor := application.NewProcessSensor(rabbitService, save, ws)
 
+	// Crear e inicializar los controladores
 	getAllController := handlers.NewGetAllAlerts(getAll)
 	getBySensorController := handlers.NewGetBySensor(getBySensor)
-
+	wsHandler := handlers.NewWebSocketHandler()
 	// Registrar rutas
-	SetupRoutes(router, getAllController, getBySensorController)
+	SetupRoutes(router, getAllController, getBySensorController, wsHandler)
 
-	// Iniciar la escucha de reportes pendientes en un goroutine
-	rabbitService.FetchReports()
+	// Iniciar WebSocket Server en un goroutine
+	go websocketService.Start()
+	go func() {
+		_, err := rabbitService.FetchReports()
+		if err != nil {
+			log.Fatalf("Error al obtener reportes de sensores: %v", err)
+		}
+	}()
 
+	go processSensor.StartProcessingSensors()
 }
