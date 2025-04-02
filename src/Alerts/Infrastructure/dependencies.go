@@ -9,13 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Dependencies almacena las instancias de los servicios
-type Dependencies struct {
-	ProcessReportUseCase *application.ProcessSensor
-}
-
-// NewDependencies configura las dependencias del sistema
-func NewDependencies(router *gin.Engine) {
+// InitAlerts configura las dependencias del sistema
+func InitAlerts(router *gin.Engine) {
 	println("SENSORES")
 
 	// Inicializar servicio RabbitMQ
