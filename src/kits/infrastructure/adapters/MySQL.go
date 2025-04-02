@@ -5,6 +5,8 @@ import (
 	"Backend/src/core"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 )
 
 type MySQL struct {
@@ -20,8 +22,9 @@ func NewMySQL() *MySQL {
 }
 func (mysql *MySQL) CreateKit(clave string, sensores []string, username string) error {
 	query := "INSERT INTO kits (clave, sensores, username, status) VALUES (?, ?, ?, ?)"
+	sensoresStr := strings.Join(sensores, ",")
 
-	_, err := mysql.conn.ExecutePreparedQuery(query, clave, sensores, username, false)
+	_, err := mysql.conn.ExecutePreparedQuery(query, clave, sensoresStr, username, false)
 	if err != nil {
 		return fmt.Errorf("error al guardar el kit: %w", err)
 	}
@@ -29,7 +32,7 @@ func (mysql *MySQL) CreateKit(clave string, sensores []string, username string) 
 }
 
 func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
-	query := "SELECT clave, sensores, username, status FROM kits"
+	query := "SELECT clave, sensores, username, userfk, status FROM kits"
 
 	rows := mysql.conn.FetchRows(query)
 	if rows == nil {
@@ -40,11 +43,26 @@ func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
 	var kits []domain.Kit
 	for rows.Next() {
 		var kit domain.Kit
-		if err := rows.Scan(&kit.Clave, &kit.Sensores, &kit.Username, &kit.Status); err != nil {
+		var sensoresStr string
+		var userfkRaw []byte
+
+		if err := rows.Scan(&kit.Clave, &sensoresStr, &kit.Username, &userfkRaw, &kit.Status); err != nil {
 			return nil, fmt.Errorf("error al escanear la fila: %w", err)
+		}
+		kit.Sensores = strings.Split(sensoresStr, ",")
+		if userfkRaw == nil {
+			kit.Userfk = 0
+		} else {
+			userfkStr := string(userfkRaw)
+			userfk, err := strconv.Atoi(userfkStr)
+			if err != nil {
+				return nil, fmt.Errorf("error al convertir userfk a int: %w", err)
+			}
+			kit.Userfk = userfk
 		}
 		kits = append(kits, kit)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterando sobre las filas: %w", err)
 	}
