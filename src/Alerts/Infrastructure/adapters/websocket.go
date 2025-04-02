@@ -1,7 +1,6 @@
 package adapters
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -10,68 +9,85 @@ import (
 )
 
 type WebSocketAdapter struct {
-	clients  map[*websocket.Conn]bool
+	clients  map[string]map[*websocket.Conn]bool // Mapa de sensores a clientes conectados
 	mu       sync.Mutex
 	upgrader websocket.Upgrader
 }
 
 func NewWebSocketAdapter() *WebSocketAdapter {
 	return &WebSocketAdapter{
-		clients: make(map[*websocket.Conn]bool),
+		clients: make(map[string]map[*websocket.Conn]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
 }
 
-func (ws *WebSocketAdapter) HandleConnections(w http.ResponseWriter, r *http.Request) {
+// Manejar conexiones WebSocket para sensores específicos
+func (ws *WebSocketAdapter) HandleConnections(sensor string, w http.ResponseWriter, r *http.Request) {
 	conn, err := ws.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Error al actualizar WebSocket:", err)
 		return
 	}
-	defer conn.Close()
 
 	ws.mu.Lock()
-	ws.clients[conn] = true
+	if ws.clients[sensor] == nil {
+		ws.clients[sensor] = make(map[*websocket.Conn]bool)
+	}
+	ws.clients[sensor][conn] = true
 	ws.mu.Unlock()
-	log.Println("Nuevo cliente conectado")
+
+	log.Printf("Nuevo cliente suscrito al sensor %s", sensor)
+
+	defer func() {
+		ws.mu.Lock()
+		delete(ws.clients[sensor], conn)
+		ws.mu.Unlock()
+		conn.Close()
+		log.Printf("Cliente desconectado de %s", sensor)
+	}()
 
 	for {
-		_, msg, err := conn.ReadMessage()
+		_, _, err := conn.ReadMessage()
 		if err != nil {
-			ws.mu.Lock()
-			delete(ws.clients, conn)
-			ws.mu.Unlock()
-			log.Println("Cliente desconectado")
 			break
 		}
-
-		log.Printf("Mensaje recibido: %s", msg)
-		ws.SendMessage(msg)
 	}
 }
 
-func (ws *WebSocketAdapter) SendMessage(message []byte) {
+// Enviar mensaje solo a los clientes del sensor correspondiente
+func (ws *WebSocketAdapter) SendMessage(sensor string, message []byte) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
-	for client := range ws.clients {
-		err := client.WriteMessage(websocket.TextMessage, message)
-		if err != nil {
-			log.Println("Error enviando mensaje WebSocket:", err)
-			client.Close()
-			delete(ws.clients, client)
+	if clients, ok := ws.clients[sensor]; ok {
+		for client := range clients {
+			err := client.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				log.Println("❌ Error enviando mensaje WebSocket:", err)
+				client.Close()
+				delete(clients, client)
+			} else {
+				log.Printf("📡 Mensaje enviado a %s: %s", sensor, string(message))
+			}
 		}
 	}
 }
 
 func (ws *WebSocketAdapter) Start() {
-	http.HandleFunc("/ws", ws.HandleConnections)
-	go func() {
-		if err := http.ListenAndServe(":8081", nil); err != nil {
-			log.Println("Error iniciando WebSocket:", err)
+	log.Println("Servidor WebSocket en marcha...")
+	http.HandleFunc("/ws/", func(w http.ResponseWriter, r *http.Request) {
+		// Extraer el sensor de la URL
+		sensor := r.URL.Path[len("/ws/"):]
+		if sensor == "" {
+			http.Error(w, "Sensor no especificado", http.StatusBadRequest)
+			return
 		}
-	}()
-	fmt.Println("WebSocket corriendo en ws://localhost:8081/ws")
+		ws.HandleConnections(sensor, w, r)
+	})
+
+	if err := http.ListenAndServe(":8081", nil); err != nil {
+		log.Println("Error iniciando WebSocket:", err)
+	}
 }

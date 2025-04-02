@@ -20,7 +20,7 @@ func (uc *SendAlert) Execute(alert *domain.Alert) error {
 	if err != nil {
 		return err
 	}
-	uc.webSocketRepo.SendMessage(jsonMessage)
+	uc.webSocketRepo.SendMessage(alert.Sensor, jsonMessage)
 	log.Printf("Sensor enviado por WEBSOCKET: Sensor %s, Datos: %v", alert.Sensor, alert.Data)
 	return nil
 }

@@ -32,7 +32,8 @@ func InitAlerts(router *gin.Engine) {
 	// Crear e inicializar los controladores
 	getAllController := handlers.NewGetAllAlerts(getAll)
 	getBySensorController := handlers.NewGetBySensor(getBySensor)
-	wsHandler := handlers.NewWebSocketHandler()
+	wsHandler := handlers.NewWebSocketHandler(websocketService)
+
 	// Registrar rutas
 	SetupRoutes(router, getAllController, getBySensorController, wsHandler)
 

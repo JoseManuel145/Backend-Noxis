@@ -1,61 +1,30 @@
 package handlers
 
 import (
+	"Backend/src/Alerts/Infrastructure/adapters"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
 
-// Estructura del handler WebSocket
 type WebSocketHandler struct {
-	upgrader websocket.Upgrader
-	clients  map[*websocket.Conn]bool
+	wsAdapter *adapters.WebSocketAdapter
 }
 
-// Constructor para inicializar el handler
-func NewWebSocketHandler() *WebSocketHandler {
-	return &WebSocketHandler{
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
-		},
-		clients: make(map[*websocket.Conn]bool),
-	}
+// Constructor
+func NewWebSocketHandler(wsAdapter *adapters.WebSocketAdapter) *WebSocketHandler {
+	return &WebSocketHandler{wsAdapter: wsAdapter}
 }
 
-// Método para manejar conexiones WebSocket
+// Manejar conexión WebSocket específica por sensor
 func (wsh *WebSocketHandler) HandleWebSocket(c *gin.Context) {
-	conn, err := wsh.upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Printf("Error al establecer conexión WebSocket: %v", err)
+	sensor := c.Param("sensor")
+	if sensor == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sensor no especificado"})
 		return
 	}
-	defer conn.Close()
 
-	// Agregar cliente a la lista
-	wsh.clients[conn] = true
-	log.Println("Nuevo cliente conectado")
-
-	// Leer mensajes entrantes
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error al leer mensaje:", err)
-			delete(wsh.clients, conn)
-			break
-		}
-
-		log.Printf("Mensaje recibido: %s", msg)
-
-		// Reenviar mensaje a todos los clientes conectados
-		for client := range wsh.clients {
-			err := client.WriteMessage(websocket.TextMessage, msg)
-			if err != nil {
-				log.Println("Error al enviar mensaje:", err)
-				client.Close()
-				delete(wsh.clients, client)
-			}
-		}
-	}
+	wsh.wsAdapter.HandleConnections(sensor, c.Writer, c.Request)
+	log.Printf("Cliente conectado al WebSocket de %s", sensor)
 }

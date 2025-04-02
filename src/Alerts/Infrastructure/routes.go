@@ -18,4 +18,6 @@ func SetupRoutes(
 		alerts.GET("/:sensor", getBySensor.Run)
 	}
 	router.GET("/ws", wsHandler.HandleWebSocket)
+	router.GET("/ws/:sensor", wsHandler.HandleWebSocket)
+
 }
