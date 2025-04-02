@@ -5,7 +5,6 @@ import (
 	"Backend/src/core"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 )
 
@@ -30,9 +29,8 @@ func (mysql *MySQL) CreateKit(clave string, sensores []string, username string) 
 	}
 	return nil
 }
-
 func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
-	query := "SELECT clave, sensores, username, userfk, status FROM kits"
+	query := "SELECT clave, sensores, username, status FROM kits"
 
 	rows := mysql.conn.FetchRows(query)
 	if rows == nil {
@@ -44,22 +42,12 @@ func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
 	for rows.Next() {
 		var kit domain.Kit
 		var sensoresStr string
-		var userfkRaw []byte
 
-		if err := rows.Scan(&kit.Clave, &sensoresStr, &kit.Username, &userfkRaw, &kit.Status); err != nil {
+		if err := rows.Scan(&kit.Clave, &sensoresStr, &kit.Username, &kit.Status); err != nil {
 			return nil, fmt.Errorf("error al escanear la fila: %w", err)
 		}
 		kit.Sensores = strings.Split(sensoresStr, ",")
-		if userfkRaw == nil {
-			kit.Userfk = 0
-		} else {
-			userfkStr := string(userfkRaw)
-			userfk, err := strconv.Atoi(userfkStr)
-			if err != nil {
-				return nil, fmt.Errorf("error al convertir userfk a int: %w", err)
-			}
-			kit.Userfk = userfk
-		}
+
 		kits = append(kits, kit)
 	}
 
@@ -75,4 +63,60 @@ func (mysql *MySQL) UpdateKit(clave string, status bool, userFk int) error {
 		return fmt.Errorf("error al actualizar el kit: %w", err)
 	}
 	return nil
+}
+func (mysql *MySQL) GetInactives() ([]domain.Kit, error) {
+	query := "SELECT clave, sensores, username, status FROM kits WHERE status = 0"
+
+	rows := mysql.conn.FetchRows(query)
+	if rows == nil {
+		return nil, fmt.Errorf("error al recuperar los kits inactivos")
+	}
+	defer rows.Close()
+
+	var kits []domain.Kit
+	for rows.Next() {
+		var kit domain.Kit
+		var sensoresStr string
+
+		if err := rows.Scan(&kit.Clave, &sensoresStr, &kit.Username, &kit.Status); err != nil {
+			return nil, fmt.Errorf("error al escanear la fila: %w", err)
+		}
+
+		kit.Sensores = strings.Split(sensoresStr, ",")
+
+		kits = append(kits, kit)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando sobre las filas: %w", err)
+	}
+	return kits, nil
+}
+func (mysql *MySQL) GetActives() ([]domain.Kit, error) {
+	query := "SELECT clave, sensores, username, status FROM kits WHERE status = 1"
+
+	rows := mysql.conn.FetchRows(query)
+	if rows == nil {
+		return nil, fmt.Errorf("error al recuperar los kits activos")
+	}
+	defer rows.Close()
+
+	var kits []domain.Kit
+	for rows.Next() {
+		var kit domain.Kit
+		var sensoresStr string
+
+		if err := rows.Scan(&kit.Clave, &sensoresStr, &kit.Username, &kit.Status); err != nil {
+			return nil, fmt.Errorf("error al escanear la fila: %w", err)
+		}
+
+		kit.Sensores = strings.Split(sensoresStr, ",")
+
+		kits = append(kits, kit)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando sobre las filas: %w", err)
+	}
+	return kits, nil
 }
