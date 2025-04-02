@@ -19,7 +19,7 @@ func NewMySQL() *MySQL {
 	return &MySQL{conn: conn}
 }
 func (mysql *MySQL) CreateKit(clave string, sensores []string, username string) error {
-	query := "INSERT INTO kits () VALUES (?, ?, ?, ?)"
+	query := "INSERT INTO kits (clave, sensores, username, status) VALUES (?, ?, ?, ?)"
 
 	_, err := mysql.conn.ExecutePreparedQuery(query, clave, sensores, username, false)
 	if err != nil {
@@ -29,7 +29,7 @@ func (mysql *MySQL) CreateKit(clave string, sensores []string, username string) 
 }
 
 func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
-	query := "SELECT * FROM kits"
+	query := "SELECT clave, sensores, username, status FROM kits"
 
 	rows := mysql.conn.FetchRows(query)
 	if rows == nil {
@@ -51,7 +51,7 @@ func (mysql *MySQL) GetAll() ([]domain.Kit, error) {
 	return kits, nil
 }
 func (mysql *MySQL) UpdateKit(clave string, status bool, userFk int) error {
-	query := "UPDATE kits SET status = ?, SET user_fk = ? WHERE clave = ?"
+	query := "UPDATE kits SET status = ?, userfk = ? WHERE clave = ?"
 	_, err := mysql.conn.ExecutePreparedQuery(query, status, userFk, clave)
 	if err != nil {
 		return fmt.Errorf("error al actualizar el kit: %w", err)

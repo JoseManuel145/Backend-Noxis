@@ -21,7 +21,7 @@ func NewMySQL() *MySQL {
 	return &MySQL{conn: conn}
 }
 func (mysql *MySQL) Register(email, password string) error {
-	query := "INSERT INTO admins (email, password) VALUES (?, ?)"
+	query := "INSERT INTO users (email, password) VALUES (?, ?)"
 
 	_, err := mysql.conn.ExecutePreparedQuery(query, email, password)
 	if err != nil {
@@ -30,7 +30,7 @@ func (mysql *MySQL) Register(email, password string) error {
 	return nil
 }
 func (mysql *MySQL) LogIn(email string) (string, error) {
-	query := "SELECT password FROM admins WHERE email = ?"
+	query := "SELECT password FROM users WHERE email = ?"
 
 	rows := mysql.conn.FetchRows(query, email)
 	defer rows.Close()
