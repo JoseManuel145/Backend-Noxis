@@ -17,15 +17,22 @@ func NewUpdateKit(uc *application.UpdateKit) *UpdateKit {
 }
 func (uc *UpdateKit) Run(ctx *gin.Context) {
 	userId := ctx.Param("userId")
-	clave := ctx.Param("clave")
 
 	id, err := strconv.Atoi(userId)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "El userId debe ser un número entero"})
 		return
 	}
+	var requestBody struct {
+		Clave string `json:"clave"`
+	}
 
-	err = uc.usecase.Execute(clave, true, id)
+	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Error al leer el JSON: " + err.Error()})
+		return
+	}
+
+	err = uc.usecase.Execute(requestBody.Clave, true, id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

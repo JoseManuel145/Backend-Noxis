@@ -17,6 +17,6 @@ func SetupRoutes(
 	{
 		kits.POST("/create", utils.VerificarToken, createController.Run)
 		kits.GET("/", utils.VerificarToken, getAllController.Run)
-		kits.POST("/:userId/:clave", utils.VerificarToken, updateController.Run)
+		kits.POST("/:userId", utils.VerificarToken, updateController.Run)
 	}
 }
