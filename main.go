@@ -8,7 +8,7 @@ import (
 
 	infraestructureAdmin "Backend/src/Admin/Infrastructure"
 	infraestructureSensor "Backend/src/Alerts/Infrastructure"
-	infraestructureKits "Backend/src/kits/infrastructure"
+	infraestructureKits "Backend/src/Kits/infrastructure"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
