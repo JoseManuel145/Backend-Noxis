@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"Backend/src/Kits/application"
-	"Backend/src/Kits/domain"
+	"Backend/src/kits/application"
+	"Backend/src/kits/domain"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

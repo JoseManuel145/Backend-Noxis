@@ -1,8 +1,8 @@
 package application
 
 import (
-	"Backend/src/Kits/domain"
-	"Backend/src/Kits/domain/repositories"
+	"Backend/src/kits/domain"
+	"Backend/src/kits/domain/repositories"
 	"fmt"
 )
 
