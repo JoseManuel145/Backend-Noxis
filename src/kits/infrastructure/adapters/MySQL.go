@@ -1,8 +1,8 @@
 package adapters
 
 import (
-	"Backend/src/Kits/domain"
 	"Backend/src/core"
+	"Backend/src/kits/domain"
 	"fmt"
 	"log"
 	"strings"

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"Backend/src/Kits/application"
+	"Backend/src/kits/application"
 	"net/http"
 	"strconv"
 

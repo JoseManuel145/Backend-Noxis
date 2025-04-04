@@ -1,9 +1,9 @@
 package infrastructure
 
 import (
-	"Backend/src/Kits/application"
-	"Backend/src/Kits/infrastructure/adapters"
-	"Backend/src/Kits/infrastructure/handlers"
+	"Backend/src/kits/application"
+	"Backend/src/kits/infrastructure/adapters"
+	"Backend/src/kits/infrastructure/handlers"
 
 	"github.com/gin-gonic/gin"
 )

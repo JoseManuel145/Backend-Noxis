@@ -1,6 +1,6 @@
 package repositories
 
-import "Backend/src/Kits/domain"
+import "Backend/src/kits/domain"
 
 type IKitRepository interface {
 	GetAll() ([]domain.Kit, error)
