@@ -8,6 +8,7 @@ import (
 
 	infraestructureAdmin "Backend/src/Admin/Infrastructure"
 	infraestructureSensor "Backend/src/Alerts/Infrastructure"
+	infraestructureKits "Backend/src/Kits/infrastructure"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,10 @@ func main() {
 	infraestructureAdmin.InitUser(router)
 
 	// Inicializar dependencias de la aplicación de alertas
-	infraestructureSensor.NewDependencies(router)
+	infraestructureSensor.InitAlerts(router)
+
+	// Inicializar dependencias de los kits
+	infraestructureKits.InitKits(router)
 
 	// Configuración para recibir señales del sistema
 	sigChan := make(chan os.Signal, 1)

@@ -9,13 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Dependencies almacena las instancias de los servicios
-type Dependencies struct {
-	ProcessReportUseCase *application.ProcessSensor
-}
-
-// NewDependencies configura las dependencias del sistema
-func NewDependencies(router *gin.Engine) {
+// InitAlerts configura las dependencias del sistema
+func InitAlerts(router *gin.Engine) {
 	println("SENSORES")
 
 	// Inicializar servicio RabbitMQ
@@ -37,7 +32,8 @@ func NewDependencies(router *gin.Engine) {
 	// Crear e inicializar los controladores
 	getAllController := handlers.NewGetAllAlerts(getAll)
 	getBySensorController := handlers.NewGetBySensor(getBySensor)
-	wsHandler := handlers.NewWebSocketHandler()
+	wsHandler := handlers.NewWebSocketHandler(websocketService)
+
 	// Registrar rutas
 	SetupRoutes(router, getAllController, getBySensorController, wsHandler)
 
