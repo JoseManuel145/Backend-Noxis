@@ -2,7 +2,6 @@ package application
 
 import (
 	"Backend/src/Alerts/domain/repositories"
-	"fmt"
 	"log"
 	"time"
 )
@@ -18,23 +17,27 @@ func NewProcessSensor(Rabbit repositories.IRabbitMQService, save *SaveAlert, sen
 }
 
 func (ps *ProcessSensor) StartProcessingSensors() {
-	fmt.Println("Iniciando el procesamiento de sensores...") // Verificar que la función se ejecuta
+	log.Println("Iniciando el procesamiento de sensores...") // Verificar que la función se ejecuta
 
 	for {
-		time.Sleep(2 * time.Second) // Simular intervalos de procesamiento
+		log.Println("Esperando datos del sensor...") // Mensaje de espera
+		time.Sleep(2 * time.Second)                  // Simular intervalos de procesamiento
 
+		log.Println("Llamando a FetchReports...") // Depuración adicional
 		data, err := ps.RabbitMQ.FetchReports()
 		if err != nil {
 			log.Println("Error obteniendo datos del sensor:", err)
 			continue
 		}
 		if len(data) == 0 {
+			log.Println("No se obtuvieron datos del sensor.")
 			continue
 		}
 
-		fmt.Println("Datos obtenidos en usecase:", data)
+		log.Printf("Datos obtenidos en usecase: %v", data) // Depuración
 
 		for _, alert := range data {
+			log.Printf("Procesando alerta: %v", alert)
 			err := ps.saveRepo.Execute(&alert)
 			if err != nil {
 				log.Printf("Error procesando alerta: Sensor %s, Datos: %v, Error: %v", alert.Sensor, alert.Data, err)

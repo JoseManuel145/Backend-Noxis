@@ -115,19 +115,31 @@ func (r *RabbitMQAdapter) FetchReports() ([]domain.Alert, error) {
 	dataChan := make(chan domain.Alert, batchSize)
 	var wg sync.WaitGroup
 
+	log.Println("Iniciando FetchReports...") // Depuración
+
 	// Iniciar una goroutine por cada cola (ya declarada previamente)
 	for queueName := range r.sensorQueues {
 		wg.Add(1)
 		go func(queue string) {
 			defer wg.Done()
-			r.consumeQueue(queue, dataChan)
+			// Consumir mensajes directamente desde el mapa de consumidores
+			consumerChan, exists := r.consumers[queue]
+			if !exists {
+				log.Printf("No existe un consumidor para la cola %s", queue)
+				return
+			}
+			for alert := range consumerChan {
+				log.Printf("Alerta recibida en FetchReports: %v", alert) // Depuración
+				dataChan <- alert
+			}
 		}(queueName)
 	}
 
 	// Esperar a que todas las goroutines terminen antes de cerrar el canal
 	go func() {
 		wg.Wait()
-		close(dataChan) // Cerrar el canal después de que todas las goroutines terminen
+		log.Println("Cerrando canal de datos en FetchReports...") // Depuración
+		close(dataChan)                                           // Cerrar el canal después de que todas las goroutines terminen
 	}()
 
 	// Acumular datos hasta completar batchSize
@@ -137,11 +149,16 @@ func (r *RabbitMQAdapter) FetchReports() ([]domain.Alert, error) {
 		mu.Unlock()
 
 		if len(alerts) >= batchSize {
+			log.Printf("Se alcanzó el tamaño del lote: %d", batchSize) // Depuración
 			break
 		}
 	}
 
 	// Si las alertas obtenidas son suficientes, retornar
-	fmt.Printf("Alertas obtenidas: %v\n", alerts)
+	if len(alerts) == 0 {
+		log.Println("No se obtuvieron alertas en FetchReports.") // Depuración
+		return nil, fmt.Errorf("no se obtuvieron alertas")
+	}
+	log.Printf("Alertas obtenidas en FetchReports: %v", alerts) // Depuración
 	return alerts, nil
 }

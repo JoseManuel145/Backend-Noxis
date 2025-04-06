@@ -3,7 +3,6 @@ package application
 import (
 	"Backend/src/Alerts/domain"
 	"Backend/src/Alerts/domain/repositories"
-	"encoding/json"
 	"log"
 )
 
@@ -16,11 +15,11 @@ func NewSendAlertUseCase(repo repositories.IWebSocketRepository) *SendAlert {
 }
 
 func (uc *SendAlert) Execute(alert *domain.Alert) error {
-	jsonMessage, err := json.Marshal(alert)
+	err := uc.webSocketRepo.SendMessage(alert)
 	if err != nil {
+		log.Println("error en uc send_alert", err)
 		return err
 	}
-	uc.webSocketRepo.SendMessage(alert.Sensor, jsonMessage)
 	log.Printf("Sensor enviado por WEBSOCKET: Sensor %s, Datos: %v", alert.Sensor, alert.Data)
 	return nil
 }
