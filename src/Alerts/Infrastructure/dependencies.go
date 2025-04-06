@@ -32,19 +32,22 @@ func InitAlerts(router *gin.Engine) {
 	// Crear e inicializar los controladores
 	getAllController := handlers.NewGetAllAlerts(getAll)
 	getBySensorController := handlers.NewGetBySensor(getBySensor)
-	wsHandler := handlers.NewWebSocketHandler(websocketService)
 
 	// Registrar rutas
-	SetupRoutes(router, getAllController, getBySensorController, wsHandler)
+	SetupRoutes(router, getAllController, getBySensorController)
 
-	// Iniciar WebSocket Server en un goroutine
-	go websocketService.Start()
+	// Iniciar WebSocket Server en una goroutine
 	go func() {
-		_, err := rabbitService.FetchReports()
-		if err != nil {
-			log.Fatalf("Error al obtener reportes de sensores: %v", err)
-		}
+		log.Println("Iniciando servidor WebSocket...")
+		websocketService.Start()
 	}()
 
-	go processSensor.StartProcessingSensors()
+	// Iniciar procesamiento de sensores en una goroutine
+	go func() {
+		log.Println("Iniciando procesamiento de sensores...")
+		processSensor.StartProcessingSensors()
+	}()
+
+	// Mantener el flujo principal activo
+	select {}
 }
