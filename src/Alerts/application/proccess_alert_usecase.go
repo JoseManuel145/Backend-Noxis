@@ -21,7 +21,7 @@ func (ps *ProcessSensor) StartProcessingSensors() {
 
 	for {
 		log.Println("Esperando datos del sensor...") // Mensaje de espera
-		time.Sleep(2 * time.Second)                  // Simular intervalos de procesamiento
+		time.Sleep(5 * time.Second)                 // Simular intervalos de procesamiento
 
 		log.Println("Llamando a FetchReports...") // Depuración adicional
 		data, err := ps.RabbitMQ.FetchReports()
