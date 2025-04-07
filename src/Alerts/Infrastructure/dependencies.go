@@ -49,5 +49,4 @@ func InitAlerts(router *gin.Engine) {
 	}()
 
 	// Mantener el flujo principal activo
-	select {}
 }

@@ -9,10 +9,11 @@ type Threshold struct {
 
 var sensorThresholds = map[string]map[string]struct{ Min, Max float64 }{
 	"Calidad Aire MQ-135": {
-		"calidad_aire": {Min: 0, Max: 100},
+		"data": {Min: 0, Max: 1000}, // El valor de MQ-135 es un único valor, no un objeto
 	},
 	"Carbono CJMCU-811": {
-		"co2": {Min: 400, Max: 1500},
+		"CO2":  {Min: 400, Max: 1500},
+		"TVOC": {Min: 0, Max: 500},
 	},
 	"Carbono MQ-7": {
 		"monoxido": {Min: 0, Max: 50},
